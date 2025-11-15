@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>ジャグラー設定推定＆期待値計算ツール</title>
+  <title>完全確率スロット設定推定＆期待値計算ツール（ベイズ）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
@@ -13,7 +13,7 @@
       color: #222;
     }
     h1 {
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       margin-bottom: 0.5rem;
     }
     h2 {
@@ -28,6 +28,28 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.06);
       margin-bottom: 16px;
     }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #0070f3;
+      color: #fff;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+    .step-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
     table {
       border-collapse: collapse;
       width: 100%;
@@ -41,7 +63,7 @@
     th {
       background: #f0f0f5;
     }
-    input[type="number"] {
+    input[type="number"], input[type="file"] {
       width: 100%;
       box-sizing: border-box;
       padding: 4px 6px;
@@ -65,6 +87,9 @@
       background: #0070f3;
       color: #fff;
     }
+    .btn.secondary {
+      background: #555;
+    }
     .btn:active {
       transform: translateY(1px);
     }
@@ -81,19 +106,88 @@
       font-size: 0.8rem;
       color: #666;
     }
+    .step-flow {
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #e8f0ff;
+      border-left: 4px solid #0070f3;
+    }
+    .tag-optional {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #eee;
+      font-size: 0.7rem;
+      color: #666;
+    }
+    .result-main {
+      padding: 12px;
+      border-radius: 10px;
+      background: #fff8e5;
+      border: 1px solid #ffd27f;
+      margin-bottom: 12px;
+    }
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 4px;
+    }
+    .metric-label {
+      font-size: 0.9rem;
+      color: #555;
+    }
+    .metric-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .ev-positive {
+      color: #007700;
+    }
+    .ev-negative {
+      color: #cc0000;
+    }
+    .trust-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
-  <h1>ジャグラー設定推定＆期待値計算ツール（ベイズ版）</h1>
+  <h1>完全確率スロット設定推定＆期待値計算ツール（ベイズ）</h1>
   <p class="muted">
-    各設定のボーナス確率・機械割と、ホールの投入率（事前分布）を入れて、実戦データから設定の“それっぽさ”と期待値を計算します。
-    <br>※数値は自分で調べて入力してください。
+    完全確率タイプのスロット（例：ジャグラー系など）で、<br>
+    ・ホールの設定配分（投入率）<br>
+    ・今打っている台の総G / BIG / REG<br>
+    から、設定ごとの“それっぽさ”と期待値をベイズ的に計算します。
   </p>
 
-  <!-- スペック入力 -->
+  <div class="step-flow">
+    <b>★ 使い方（重要）</b><br>
+    <b>①</b> 機種スペック（各設定のBIG/REG確率・機械割・投入率の比）を入力（必須）<br>
+    <b>②</b> （任意）過去CSVからホールの設定配分を推定して投入率の比に反映<br>
+    <b>③</b> 今打っている台の総G / BIG / REGを入力（必須）<br>
+    <b>④</b> 結果カードで「想定機械割」「期待収支」「設定ごとの確率」を確認
+  </div>
+
+  <!-- STEP 1: スペック入力 -->
   <div class="card">
-    <h2>1. 台のスペック（各設定のボーナス確率・機械割）</h2>
-    <p class="muted">BIG/REG確率は「1/x」の x を入力。機械割は％。</p>
+    <div class="step-header">
+      <div class="step-badge">1</div>
+      <div class="step-title">台のスペック入力（各設定のボーナス確率・機械割）</div>
+    </div>
+    <p class="muted">
+      各設定ごとの BIG / REG 確率は「1/x」の x を入力。機械割は％。<br>
+      <b>投入率の比（事前重み）＝その設定をどれくらい使っていると思うかの“比率”</b> です。例：1:50, 2:30, 3:10, 4:5, 5:3, 6:2<br>
+      入力後は「スペック＆投入率の比をブラウザに保存」ボタンを押すと、次回以降自動で復元されます（同じ端末・同じブラウザのみ）。
+    </p>
     <table>
       <thead>
         <tr>
@@ -101,7 +195,7 @@
           <th>BIG確率 (1/x)</th>
           <th>REG確率 (1/x)</th>
           <th>機械割 (%)</th>
-          <th>事前重み<br>(投入率の比)</th>
+          <th>投入率の比<br>（事前重み）</th>
         </tr>
       </thead>
       <tbody>
@@ -149,11 +243,51 @@
         </tr>
       </tbody>
     </table>
+    <button class="btn secondary" onclick="saveSpecToLocalStorage()">
+      スペック＆投入率の比をブラウザに保存
+    </button>
+    <div id="save_spec_message" class="muted"></div>
   </div>
 
-  <!-- 実戦データ -->
+  <!-- STEP 2 (任意): ホール事前分布推定 -->
   <div class="card">
-    <h2>2. 実戦データ</h2>
+    <div class="step-header">
+      <div class="step-badge">2</div>
+      <div class="step-title">
+        ホールの事前分布（設定投入率）の推定
+        <span class="tag-optional">任意 / 上級者向け</span>
+      </div>
+    </div>
+    <p class="muted">
+      過去の多数台データ（CSV: 1行=1台の G, B, R）から、設定1〜6の投入割合（混合比 π<sub>k</sub>）を
+      EMアルゴリズムで推定します。<br>
+      <b>推定結果は下の「投入率の比」にボタン1つで反映可能</b> です。<br>
+      ・まず上のステップ1で、各設定のBIG/REG確率だけ入力しておいてください。<br>
+      ・<b>CSV の1行目はヘッダー行として <code>G,B,R</code> または <code>games,big,reg</code> など</b>を含めてください。
+    </p>
+    <div class="grid">
+      <div>
+        <label>CSVファイル（1行=1台の G,B,R）</label>
+        <input type="file" id="prior_file" accept=".csv" />
+      </div>
+    </div>
+    <button class="btn" onclick="runPriorEstimation()">投入率を推定する</button>
+    <button class="btn secondary" id="apply_prior_btn" style="display:none; margin-left:8px;" onclick="applyEstimatedPrior()">
+      推定結果を投入率の比に反映
+    </button>
+    <div id="prior_error" class="error"></div>
+    <div id="prior_result" class="result" style="margin-top:8px;"></div>
+  </div>
+
+  <!-- STEP 3: 実戦データ -->
+  <div class="card">
+    <div class="step-header">
+      <div class="step-badge">3</div>
+      <div class="step-title">自分の台の実戦データを入力</div>
+    </div>
+    <p class="muted">
+      設定推定・期待値計算に使う、<b>今打っている台の</b>総G / BIG / REG を入力します。
+    </p>
     <div class="grid">
       <div>
         <label>総ゲーム数 G</label>
@@ -173,19 +307,78 @@
         <span class="muted">※EVを「◯円あたり」で出す用。デフォルト1000円。</span>
       </div>
     </div>
-    <button class="btn" onclick="runCalc()">計算する</button>
+    <button class="btn" onclick="runCalc()">設定推定＆期待値を計算する</button>
     <div id="error" class="error"></div>
   </div>
 
-  <!-- 結果表示 -->
+  <!-- STEP 4: 結果表示 -->
   <div class="card">
-    <h2>3. 結果</h2>
+    <div class="step-header">
+      <div class="step-badge">4</div>
+      <div class="step-title">結果（設定ごとの確率と期待値）</div>
+    </div>
     <div id="result" class="result">
-      入力後、「計算する」を押してください。
+      ステップ1〜3を入力したあと、「設定推定＆期待値を計算する」を押してください。
     </div>
   </div>
 
   <script>
+    let lastEstimatedPi = null; // EMで推定した投入率を保存
+    let lastPriorSampleSize = null; // prior推定に使った台数Nを保存
+
+    // ---------- スペック＆投入率の比のローカル保存 ----------
+    function saveSpecToLocalStorage() {
+      const spec = {};
+      for (let k = 1; k <= 6; k++) {
+        ["big_1over_", "reg_1over_", "rtp_", "prior_"].forEach(prefix => {
+          const id = prefix + k;
+          const el = document.getElementById(id);
+          if (el) {
+            spec[id] = el.value;
+          }
+        });
+      }
+      try {
+        localStorage.setItem("slot_spec_v1", JSON.stringify(spec));
+        const msgEl = document.getElementById("save_spec_message");
+        if (msgEl) {
+          msgEl.textContent = "スペックと投入率の比を保存しました（この端末・このブラウザのみ有効）。";
+        }
+      } catch (e) {
+        const msgEl = document.getElementById("save_spec_message");
+        if (msgEl) {
+          msgEl.textContent = "ブラウザへの保存に失敗しました。ローカルストレージが使用できない可能性があります。";
+        }
+      }
+    }
+
+    function loadSpecFromLocalStorage() {
+      try {
+        const text = localStorage.getItem("slot_spec_v1");
+        if (!text) return;
+        const spec = JSON.parse(text);
+        for (let k = 1; k <= 6; k++) {
+          ["big_1over_", "reg_1over_", "rtp_", "prior_"].forEach(prefix => {
+            const id = prefix + k;
+            if (spec[id] !== undefined) {
+              const el = document.getElementById(id);
+              if (el) el.value = spec[id];
+            }
+          });
+        }
+        const msgEl = document.getElementById("save_spec_message");
+        if (msgEl) {
+          msgEl.textContent = "前回保存したスペックと投入率の比を読み込みました。";
+        }
+      } catch (e) {
+        console.warn("failed to load spec from localStorage", e);
+      }
+    }
+
+    // ページ読み込み時に自動復元
+    window.addEventListener("DOMContentLoaded", loadSpecFromLocalStorage);
+
+    // ---------- ベイズ設定推定（1台用） ----------
     function runCalc() {
       const errEl = document.getElementById("error");
       const resEl = document.getElementById("result");
@@ -223,7 +416,7 @@
         const priorVal = Number(document.getElementById("prior_" + k).value);
 
         if (!big1over || !reg1over || !rtpVal) {
-          errEl.textContent = "設定" + k + " のスペック（BIG/REG確率・機械割）をすべて入力してください。";
+          errEl.textContent = "設定" + k + " のスペック（BIG/REG確率・機械割）をすべて入力してください。（ステップ1）";
           return;
         }
         const pB_k = 1.0 / big1over;
@@ -235,31 +428,30 @@
         }
         pB[k] = pB_k;
         pR[k] = pR_k;
-        rtp[k] = rtpVal / 100.0; // 小数に変換
+        rtp[k] = rtpVal / 100.0; // ％→小数
         priorRaw[k] = priorVal > 0 ? priorVal : 0;
       }
 
       const priorSum = priorRaw.reduce((acc, v) => acc + (v || 0), 0);
       if (priorSum <= 0) {
-        errEl.textContent = "事前重み（投入率の比）がすべて0です。少なくとも1つは正の値を入れてください。";
+        errEl.textContent = "投入率の比（事前重み）がすべて0です。少なくとも1つは正の値を入れてください。";
         return;
       }
 
-      // 正規化した事前分布
       const prior = [];
       for (let k = 1; k <= K; k++) {
         prior[k] = priorRaw[k] / priorSum;
       }
 
-      // ログ尤度計算
+      // ログ尤度
       const logL = [];
       let maxLogL = -Infinity;
+      const eps = 1e-15;
       for (let k = 1; k <= K; k++) {
         const pBk = pB[k];
         const pRk = pR[k];
         const pNone = 1.0 - pBk - pRk;
 
-        const eps = 1e-15; // log(0)回避用
         const logTerm =
           B * Math.log(pBk + eps) +
           R * Math.log(pRk + eps) +
@@ -273,7 +465,7 @@
       const unnorm = [];
       let sumUnnorm = 0;
       for (let k = 1; k <= K; k++) {
-        const val = prior[k] * Math.exp(logL[k] - maxLogL); // 数値安定化
+        const val = prior[k] * Math.exp(logL[k] - maxLogL);
         unnorm[k] = val;
         sumUnnorm += val;
       }
@@ -283,7 +475,6 @@
         return;
       }
 
-      // 正規化された事後分布
       const post = [];
       for (let k = 1; k <= K; k++) {
         post[k] = unnorm[k] / sumUnnorm;
@@ -296,18 +487,26 @@
       }
       const evPerBet = bet * (rMix - 1.0);
 
-      // 表示用HTML生成
-      let html = "";
-      html += "<p>ベット " + bet.toLocaleString() + " 円あたりの結果：</p>";
-      html += "<ul>";
-      html += "<li>事後分布で重み付けした想定機械割： <b>" + (rMix*100).toFixed(2) + " %</b></li>";
-      html += "<li>" + bet.toLocaleString() + " 円あたりの期待収支： <b>" + evPerBet.toFixed(1) + " 円</b></li>";
-      html += "</ul>";
+      const evClass = evPerBet >= 0 ? "ev-positive" : "ev-negative";
+      const evLabel = evPerBet >= 0 ? "（プラス期待値）" : "（マイナス期待値）";
 
-      html += "<h3>設定ごとの事前・事後の比較</h3>";
+      let html = "";
+      // 重要な結果を強調表示
+      html += '<div class="result-main">';
+      html += '  <div class="metric-row">';
+      html += '    <div class="metric-label">想定機械割（事後分布で重み付け）</div>';
+      html += '    <div class="metric-value">' + (rMix*100).toFixed(2) + ' %</div>';
+      html += '  </div>';
+      html += '  <div class="metric-row">';
+      html += '    <div class="metric-label">ベット ' + bet.toLocaleString() + ' 円あたりの期待収支</div>';
+      html += '    <div class="metric-value ' + evClass + '">' + evPerBet.toFixed(1) + ' 円 ' + evLabel + '</div>';
+      html += '  </div>';
+      html += '</div>';
+
+      html += "<h3>設定ごとの投入率の比・事後分布の比較</h3>";
       html += "<table><thead><tr>" +
               "<th>設定</th>" +
-              "<th>事前分布 (%)</th>" +
+              "<th>投入率の比<br>（事前分布, %）</th>" +
               "<th>事後分布 (%)</th>" +
               "<th>機械割 (%)</th>" +
               "</tr></thead><tbody>";
@@ -320,9 +519,243 @@
         "</tr>";
       }
       html += "</tbody></table>";
-      html += '<p class="muted">※事前分布は入力した「事前重み」を正規化したものです。</p>';
+      html += '<p class="muted">※投入率の比（事前分布）は入力した値を正規化したものです。<br>※総Gやホール投入率のサンプル数が少ない場合、結果は大きくブレます。</p>';
 
       resEl.innerHTML = html;
+    }
+
+    // ---------- CSV読み込み＆EMで投入率推定 ----------
+    function runPriorEstimation() {
+      const errEl = document.getElementById("prior_error");
+      const resEl = document.getElementById("prior_result");
+      const applyBtn = document.getElementById("apply_prior_btn");
+      errEl.textContent = "";
+      resEl.textContent = "";
+      applyBtn.style.display = "none";
+      lastEstimatedPi = null;
+      lastPriorSampleSize = null;
+
+      const fileInput = document.getElementById("prior_file");
+      const file = fileInput.files[0];
+      if (!file) {
+        errEl.textContent = "CSVファイルを選択してください。";
+        return;
+      }
+
+      const K = 6;
+      const big1over = [];
+      const reg1over = [];
+      for (let k = 1; k <= K; k++) {
+        const b = Number(document.getElementById("big_1over_" + k).value);
+        const r = Number(document.getElementById("reg_1over_" + k).value);
+        if (!b || !r) {
+          errEl.textContent = "投入率推定の前に、各設定のBIG/REG確率（1/x）をすべて入力してください。（ステップ1）";
+          return;
+        }
+        big1over.push(b);
+        reg1over.push(r);
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        try {
+          const data = parsePriorCsv(text);
+          if (data.length === 0) {
+            errEl.textContent = "有効なデータ行がありません（G>0 且つ B,R が妥当な行が必要です）。";
+            return;
+          }
+          const result = emEstimatePriorFromArrays(data, big1over, reg1over);
+          lastEstimatedPi = result.pi;
+          lastPriorSampleSize = data.length;
+
+          const N = data.length;
+          const z = 1.96;
+
+          // 信頼度バッジ用
+          let trustLabel = "";
+          let trustColor = "";
+          if (N < 30) {
+            trustLabel = "低（サンプル不足）";
+            trustColor = "#c0392b";
+          } else if (N < 100) {
+            trustLabel = "中";
+            trustColor = "#e67e22";
+          } else {
+            trustLabel = "高";
+            trustColor = "#27ae60";
+          }
+
+          let html = "";
+          html += "<p><b>使用した台数:</b> " + N + " 台";
+          html += '<span class="trust-badge" style="background:' + trustColor + '22; color:' + trustColor + ';">推定信頼度: ' + trustLabel + "</span></p>";
+          html += "<p>推定された設定投入率（混合比 πₖ）と Wald 型 95%区間：</p>";
+          html += "<table><thead><tr>" +
+                  "<th>設定</th>" +
+                  "<th>推定割合 πₖ (%)</th>" +
+                  "<th>Wald 95%区間 (%)</th>" +
+                  "</tr></thead><tbody>";
+
+          for (let k = 0; k < result.pi.length; k++) {
+            const pi = result.pi[k]; // 0〜1
+            const se = Math.sqrt(pi * (1 - pi) / N);
+            let low = pi - z * se;
+            let high = pi + z * se;
+            if (low < 0) low = 0;
+            if (high > 1) high = 1;
+
+            html += "<tr>" +
+              "<td>" + (k+1) + "</td>" +
+              "<td>" + (pi*100).toFixed(2) + "</td>" +
+              "<td>" + (low*100).toFixed(2) + " 〜 " + (high*100).toFixed(2) + "</td>" +
+              "</tr>";
+          }
+          html += "</tbody></table>";
+          html += '<p class="muted">※Wald型の正規近似による区間です。サンプル数が少ない場合や極端な割合では、実際の被覆率が95%よりずれる可能性があります。<br>※CSVの各行を「1台ぶんの G（総G）・B（BIG）・R（REG）」として解釈しています。</p>';
+
+          resEl.innerHTML = html;
+          applyBtn.style.display = "inline-block";
+        } catch (err) {
+          errEl.textContent = "CSVの読み込みまたは推定中にエラー: " + err.message;
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function parsePriorCsv(text) {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length < 2) return [];
+
+      const header = lines[0].split(/[,;\t]/).map(s => s.trim());
+      function findIndex(cands) {
+        for (let i = 0; i < header.length; i++) {
+          const h = header[i].toLowerCase();
+          for (let j = 0; j < cands.length; j++) {
+            if (h === cands[j]) return i;
+          }
+        }
+        return -1;
+      }
+
+      const idxG = findIndex(["g", "games", "game", "totalg", "total_games"]);
+      const idxB = findIndex(["b", "big", "big_count", "bigc"]);
+      const idxR = findIndex(["r", "reg", "reg_count", "regc"]);
+
+      if (idxG === -1 || idxB === -1 || idxR === -1) {
+        throw new Error("ヘッダー行に G/B/R 相当の列が見つかりません（例: G,B,R）。");
+      }
+
+      const data = [];
+      for (let li = 1; li < lines.length; li++) {
+        const cols = lines[li].split(/[,;\t]/);
+        if (cols.length <= Math.max(idxG, idxB, idxR)) continue;
+        const G = Number(cols[idxG]);
+        const B = Number(cols[idxB]);
+        const R = Number(cols[idxR]);
+        if (!G || G <= 0) continue;
+        if (B < 0 || R < 0 || B + R > G) continue;
+        data.push({ G: G, B: B, R: R });
+      }
+      return data;
+    }
+
+    function emEstimatePriorFromArrays(data, big1over, reg1over) {
+      const N = data.length;
+      const K = big1over.length;
+      const eps = 1e-15;
+
+      const pB = new Array(K);
+      const pR = new Array(K);
+      const pNone = new Array(K);
+      for (let k = 0; k < K; k++) {
+        pB[k] = 1.0 / big1over[k];
+        pR[k] = 1.0 / reg1over[k];
+        pNone[k] = 1.0 - pB[k] - pR[k];
+        if (pNone[k] <= 0) {
+          throw new Error("設定" + (k+1) + " で pB + pR >= 1 になっています。スペックを見直してください。");
+        }
+      }
+
+      const logL = new Array(N);
+      for (let i = 0; i < N; i++) {
+        logL[i] = new Array(K);
+        const Bi = data[i].B;
+        const Ri = data[i].R;
+        const Gi = data[i].G;
+        const none = Gi - Bi - Ri;
+        for (let k = 0; k < K; k++) {
+          logL[i][k] =
+            Bi * Math.log(pB[k] + eps) +
+            Ri * Math.log(pR[k] + eps) +
+            none * Math.log(pNone[k] + eps);
+        }
+      }
+
+      let pi = new Array(K).fill(1.0 / K);
+      const maxIter = 200;
+      const tol = 1e-6;
+
+      const resp = new Array(N);
+      for (let i = 0; i < N; i++) {
+        resp[i] = new Array(K).fill(0);
+      }
+
+      for (let iter = 0; iter < maxIter; iter++) {
+        // E-step
+        for (let i = 0; i < N; i++) {
+          let maxLog = -Infinity;
+          for (let k = 0; k < K; k++) {
+            const val = Math.log(pi[k] + eps) + logL[i][k];
+            resp[i][k] = val;
+            if (val > maxLog) maxLog = val;
+          }
+          let sum = 0;
+          for (let k = 0; k < K; k++) {
+            const w = Math.exp(resp[i][k] - maxLog);
+            resp[i][k] = w;
+            sum += w;
+          }
+          if (sum === 0) {
+            for (let k = 0; k < K; k++) resp[i][k] = 1.0 / K;
+          } else {
+            for (let k = 0; k < K; k++) resp[i][k] /= sum;
+          }
+        }
+
+        // M-step
+        const piNew = new Array(K).fill(0);
+        for (let k = 0; k < K; k++) {
+          let s = 0;
+          for (let i = 0; i < N; i++) s += resp[i][k];
+          piNew[k] = s / N;
+        }
+
+        let maxDiff = 0;
+        for (let k = 0; k < K; k++) {
+          const diff = Math.abs(piNew[k] - pi[k]);
+          if (diff > maxDiff) maxDiff = diff;
+          pi[k] = piNew[k];
+        }
+        if (maxDiff < tol) break;
+      }
+
+      return { pi: pi, resp: resp };
+    }
+
+    function applyEstimatedPrior() {
+      const errEl = document.getElementById("prior_error");
+      if (!lastEstimatedPi) {
+        errEl.textContent = "まずCSVから投入率を推定してください。";
+        return;
+      }
+      for (let k = 0; k < lastEstimatedPi.length; k++) {
+        const v = lastEstimatedPi[k] * 100; // 比として100倍しておく
+        const input = document.getElementById("prior_" + (k + 1));
+        if (input) {
+          input.value = v.toFixed(3);
+        }
+      }
+      errEl.textContent = "推定された投入率の比を入力欄に反映しました（必要なら手で微調整してください）。";
     }
   </script>
 </body>
